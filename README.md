@@ -8,12 +8,12 @@ Wayne State University School of Medicine | Tech Fair 2026
 
 **Zero-Shot Detection of Lumbosacral Transitional Vertebrae Using Epistemic Uncertainty from a Pretrained Spine Localizer**
 
-*Ghassan O. OMAR, Robert D. BOUTIN, and Anne M.R. AGUR*  
-*Department of Radiology, Wayne State University School of Medicine, Detroit, MI, 48201, United States*
+*Gregory John Schwing*  
+*Department of Neurological Surgery, Wayne State University School of Medicine, Detroit, MI, 48201, United States*
 
 **INTRODUCTION.** Lumbosacral transitional vertebrae (LSTV) are congenital spinal anomalies occurring in 15-30% of the population, characterized by sacralization of L5 or lumbarization of S1. Misidentification leads to wrong-level surgery, failed back surgery syndrome, and medicolegal consequences. Traditional detection requires expert radiologist review or supervised learning models trained on labeled LSTV datasets. We hypothesized that a deep learning spine localizer trained exclusively on normal anatomy would exhibit high epistemic uncertainty when encountering LSTV, enabling zero-shot detection without LSTV-specific training data. The purpose of this study was to develop and validate an automated LSTV screening system using uncertainty quantification from a pretrained vertebral level localization model.
 
-**METHODS.** We repurposed a heatmap regression network (UNet architecture) from the RSNA 2024 Lumbar Spine Degenerative Classification 2nd place solution, originally trained on 1,975 normal MRI studies for L1-S1 localization. The model outputs probability heatmaps for each vertebral level. We calculated Shannon entropy H = -Σp(x)log(p(x)) and peak confidence from L4-L5 and L5-S1 heatmaps as uncertainty metrics. Inference was performed on 500 sagittal T2-weighted MRI studies from the RSNA validation set (held-out during original training) to prevent data leakage. Ground truth LSTV status was established through expert radiologist review. Detection thresholds were optimized using receiver operating characteristic analysis.
+**METHODS.** We repurposed a heatmap regression network (UNet architecture) from the RSNA 2024 Lumbar Spine Degenerative Classification 2nd place solution, originally trained on 1,975 normal MRI studies for L1-S1 localization. The model outputs probability heatmaps for each vertebral level. We calculated Shannon entropy H = -Σp(x)log(p(x)) and peak confidence from L4-L5 and L5-S1 heatmaps as uncertainty metrics. Inference was performed on 283 sagittal T2-weighted MRI studies from the RSNA validation set (held-out during original training) to prevent data leakage. Ground truth LSTV status was established through expert radiologist review. Detection thresholds were optimized using receiver operating characteristic analysis.
 
 **CONCLUSIONS.** Epistemic uncertainty from a spine localizer trained on normal anatomy enables accurate zero-shot LSTV detection without requiring LSTV-labeled training data. This approach demonstrates that model confusion itself can serve as a diagnostic signal for anatomical variants, with potential applications to other congenital anomalies beyond LSTV.
 
@@ -31,7 +31,7 @@ This project repurposes a spinal level localizer trained on normal anatomy to de
 
 **⚠️ IMPORTANT: To avoid data leakage, inference MUST only use validation set studies!**
 
-The Point Net model was trained on 1,975 studies from `train_id.npy`. We **ONLY** run inference on the 500 studies in `valid_id.npy` that were held out during training.
+The Point Net model was trained on 1,975 studies from `train_id.npy`. We **ONLY** run inference on the 283 studies in `valid_id.npy` that were held out during training.
 
 **Files Required:**
 - `models/point_net_checkpoint.pth` - Trained model weights
@@ -45,7 +45,7 @@ Both files are automatically downloaded by `slurm_scripts/01b_download_model.sh`
 - **Metrics**: Shannon entropy, peak confidence, spatial entropy
 - **Target**: L4-L5 and L5-S1 levels (most common LSTV locations)  
 - **Threshold**: Entropy > 5.0 indicates potential LSTV
-- **Dataset**: 500 validation studies from RSNA 2024 Lumbar Spine Competition
+- **Dataset**: 283 validation studies from RSNA 2024 Lumbar Spine Competition
 
 ## 🚀 Quick Start
 
@@ -170,7 +170,7 @@ This will download from the `hengck23/rsna2024-demo-workflow` dataset:
 
 **⚠️ CRITICAL: Data Leakage Prevention**
 
-The `valid_id.npy` file contains 500 study IDs that were **held out during model training**. Our inference pipeline **ONLY** processes these validation studies to ensure:
+The `valid_id.npy` file contains 283 study IDs that were **held out during model training**. Our inference pipeline **ONLY** processes these validation studies to ensure:
 - No data leakage
 - Valid performance metrics
 - Publishable results
@@ -260,7 +260,7 @@ sbatch slurm_scripts/04_debug_single.sh <study_id>
 ```bash
 sbatch slurm_scripts/03_prod_inference.sh
 ```
-- Full dataset (~500 studies)
+- Full dataset (283 studies)
 - Complete analysis (~4-6 hours)
 - Comprehensive report
 
@@ -337,7 +337,7 @@ grep -i "sagittal" data/raw/train_series_descriptions.csv | grep -i "t2" | wc -l
 ## 👥 Team
 
 **Wayne State University School of Medicine**
-- Graduate Student: [Your Name]
+- Graduate Student: Gregory John Schwing
 - Advisor: [Advisor Name]
 - Course: Medical Imaging / Machine Learning
 
@@ -348,7 +348,7 @@ If you use this work, please cite:
 ```bibtex
 @software{lstv_uncertainty_2026,
   title={LSTV Detection via Epistemic Uncertainty},
-  author={[Your Name]},
+  author={Gregory John Schwing},
   year={2026},
   organization={Wayne State University School of Medicine}
 }
@@ -357,7 +357,7 @@ If you use this work, please cite:
 ## 🔗 Links
 
 - **RSNA Competition**: https://www.kaggle.com/competitions/rsna-2024-lumbar-spine-degenerative-classification
-- **Ian Pan's Solution**: [Link to Kaggle notebook]
+- **Ian Pan's Solution**: https://www.kaggle.com/competitions/rsna-2024-lumbar-spine-degenerative-classification/writeups/ianpan-kevin-yuji-bartley-2nd-place-solution
 - **Tech Fair Demo**: http://localhost:5000
 
 ## 📄 License
