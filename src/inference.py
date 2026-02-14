@@ -454,6 +454,10 @@ def run_inference(args):
                     model = model.to(device)
                     model.eval()
                     
+                    # CRITICAL: Set to inference-only mode (no loss calculation)
+                    model.output_type = ['infer']
+                    logger.info("Set model to inference-only mode (no loss calculation)")
+                    
                     logger.info("="*60)
                     logger.info("✓✓✓ MODEL LOADED SUCCESSFULLY ✓✓✓")
                     logger.info("✓✓✓ USING REAL INFERENCE ✓✓✓")
@@ -473,6 +477,10 @@ def run_inference(args):
                     model = model.to(device)
                     model.eval()
                     
+                    # CRITICAL: Set to inference-only mode (no loss calculation)
+                    model.output_type = ['infer']
+                    logger.info("Set model to inference-only mode (no loss calculation)")
+                    
                     logger.info("="*60)
                     logger.info("✓✓✓ MODEL LOADED SUCCESSFULLY ✓✓✓")
                     logger.info("✓✓✓ USING REAL INFERENCE ✓✓✓")
@@ -485,6 +493,11 @@ def run_inference(args):
                 # Checkpoint IS the model
                 model = checkpoint.to(device)
                 model.eval()
+                
+                # CRITICAL: Set to inference-only mode (no loss calculation)
+                model.output_type = ['infer']
+                logger.info("Set model to inference-only mode (no loss calculation)")
+                
                 logger.info("="*60)
                 logger.info("✓✓✓ MODEL LOADED SUCCESSFULLY ✓✓✓")
                 logger.info("✓✓✓ USING REAL INFERENCE ✓✓✓")
@@ -541,33 +554,60 @@ def run_inference(args):
         if model is not None:
             try:
                 logger.info("Running REAL model inference...")
-
-                with torch.no_grad():
-                    # Prepare input - select middle slice
-                    mid_slice_idx = volume.shape[0] // 2
-                    image = volume[mid_slice_idx]  # (H, W)
-                    
-                    # Resize to model input size (512x512)
-                    image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_LINEAR)
-                    
-                    # Convert to tensor: (1, 1, H, W)
-                    image_tensor = torch.from_numpy(image).unsqueeze(0).unsqueeze(0).to(device)
-                    
-                    # Create batch dict
-                    batch = {'sagittal': image_tensor}
-                    
-                    # Run model
-                    output = model(batch)
-                    
-                    # Extract probability heatmap: (1, 6, H, W) -> (6, H, W)
-                    probability = output['probability'][0].cpu().numpy()
-                    
-                    # Calculate uncertainty from real predictions
-                    points, uncertainty_metrics = probability_to_point_with_uncertainty(
-                        probability, threshold=0.5
-                    )
-                    
-                    logger.info("✓ Successfully used REAL model predictions")
+                
+                # CRITICAL: Ian Pan uses 160x160, NOT 512x512!
+                IMAGE_SIZE = 160
+                
+                # Step 1: Resize entire volume to 160x160 (Ian Pan's preprocessing)
+                logger.debug(f"Original volume shape: {volume.shape}")
+                resized_volume = volume.copy()
+                # Transpose to (H, W, D) for cv2.resize
+                resized_volume = np.ascontiguousarray(resized_volume.transpose((1, 2, 0)))
+                # Resize all slices at once
+                resized_volume = cv2.resize(resized_volume, (IMAGE_SIZE, IMAGE_SIZE), 
+                                           interpolation=cv2.INTER_LINEAR)
+                # Transpose back to (D, H, W)
+                resized_volume = np.ascontiguousarray(resized_volume.transpose((2, 0, 1)))
+                logger.debug(f"Resized volume shape: {resized_volume.shape}")
+                
+                # Step 2: Select middle slice
+                mid_slice_idx = resized_volume.shape[0] // 2
+                image = resized_volume[mid_slice_idx]  # (160, 160)
+                logger.debug(f"Middle slice shape: {image.shape}, dtype: {image.dtype}")
+                
+                # Step 3: Convert to byte tensor (model expects uint8 and normalizes internally)
+                image_tensor = torch.from_numpy(image).unsqueeze(0).unsqueeze(0).byte().to(device)
+                logger.debug(f"Tensor shape: {image_tensor.shape}, dtype: {image_tensor.dtype}")
+                
+                # Step 4: Create batch dict
+                batch = {'sagittal': image_tensor}
+                
+                # Step 5: Run model with AMP (like Ian Pan)
+                with torch.cuda.amp.autocast(enabled=True):
+                    with torch.no_grad():
+                        output = model(batch)
+                
+                # Step 6: Extract probability heatmap: (1, 6, H, W) -> (6, H, W)
+                probability = output['probability'][0].float().cpu().numpy()
+                logger.debug(f"Probability shape: {probability.shape}")
+                logger.debug(f"Probability range: [{probability.min():.4f}, {probability.max():.4f}]")
+                
+                # Sanity check: probabilities should sum to ~1 across channels
+                prob_sum = probability.sum(axis=0).mean()
+                logger.debug(f"Mean probability sum across channels: {prob_sum:.4f} (should be ~1.0)")
+                
+                # Step 7: Calculate uncertainty from real predictions
+                points, uncertainty_metrics = probability_to_point_with_uncertainty(
+                    probability, threshold=0.5
+                )
+                
+                logger.info("✓ Successfully used REAL model predictions")
+                
+                # Log sample values for verification
+                logger.info("Sample predictions:")
+                for level in ['l1_l2', 'l5_s1']:
+                    logger.info(f"  {level}: conf={uncertainty_metrics[level]['peak_confidence']:.4f}, "
+                              f"entropy={uncertainty_metrics[level]['entropy']:.4f}")
 
             except Exception as e:
                 logger.error(f"Error during inference: {e}")

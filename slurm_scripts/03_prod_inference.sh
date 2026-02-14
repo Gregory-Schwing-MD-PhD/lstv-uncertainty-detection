@@ -112,20 +112,25 @@ if [ $inference_exit -ne 0 ]; then
     exit $inference_exit
 fi
 
-# Generate report
+# Generate report with embedded images
 echo ""
 echo "================================================================"
-echo "Generating HTML Report..."
+echo "Generating HTML Report with Embedded Images..."
+echo "NOTE: Image generation for production mode (top 5 high + 5 moderate risk)"
 echo "================================================================"
 
 singularity exec \
     --bind $PROJECT_DIR:/work \
     --bind $OUTPUT_DIR:/data/output \
+    --bind $DATA_DIR:/data/input \
+    --bind $(dirname $SERIES_CSV):/data/raw \
     --pwd /work \
     "$IMG_PATH" \
     python /work/src/generate_report.py \
         --csv /data/output/lstv_uncertainty_metrics.csv \
-        --output /data/output/report.html
+        --output /data/output/report.html \
+        --data_dir /data/input \
+        --series_csv /data/raw/train_series_descriptions.csv
 
 echo "================================================================"
 echo "Complete!"
@@ -136,8 +141,13 @@ echo ""
 echo "RESULTS:"
 echo "  CSV: ${OUTPUT_DIR}/lstv_uncertainty_metrics.csv"
 echo "  Report: ${OUTPUT_DIR}/report.html"
-echo "  Total Studies Processed: $(wc -l < ${OUTPUT_DIR}/lstv_uncertainty_metrics.csv)"
+echo "  Total Studies Processed: $(tail -n +2 ${OUTPUT_DIR}/lstv_uncertainty_metrics.csv | wc -l)"
 echo ""
 echo "To view report:"
 echo "  firefox ${OUTPUT_DIR}/report.html"
+echo ""
+echo "Report includes:"
+echo "  - Interactive distribution plots"
+echo "  - Embedded DICOM images (top 5 high-risk + 5 moderate-risk cases)"
+echo "  - Confidence-based risk stratification"
 echo "================================================================"
