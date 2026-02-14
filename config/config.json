@@ -1,0 +1,116 @@
+{
+  "project": {
+    "name": "LSTV Uncertainty Detection",
+    "version": "1.0.0",
+    "institution": "Wayne State University School of Medicine",
+    "description": "Epistemic uncertainty-based LSTV detection using Ian Pan's RSNA spine localizer"
+  },
+  
+  "model": {
+    "checkpoint_path": "models/point_net_checkpoint.pth",
+    "image_size": 160,
+    "device": "cuda",
+    "uncertainty_threshold": 5.0
+  },
+  
+  "data": {
+    "rsna_competition": "rsna-2024-lumbar-spine-degenerative-classification",
+    "input_dir": "data/raw/train_images",
+    "series_csv": "data/raw/train_series_descriptions.csv",
+    "output_dir": "data/output",
+    "target_series": ["sagittal", "t2"]
+  },
+  
+  "inference": {
+    "modes": {
+      "trial": {
+        "num_studies": 10,
+        "description": "Quick validation run"
+      },
+      "debug": {
+        "num_studies": 1,
+        "save_visualizations": true,
+        "verbose": true
+      },
+      "prod": {
+        "num_studies": "all",
+        "progress_bar": true
+      }
+    }
+  },
+  
+  "uncertainty_metrics": {
+    "entropy": {
+      "method": "shannon",
+      "normalization": true
+    },
+    "confidence": {
+      "method": "max_probability"
+    },
+    "spatial_entropy": {
+      "num_bins": 10
+    }
+  },
+  
+  "levels": {
+    "l1_l2": 1,
+    "l2_l3": 2,
+    "l3_l4": 3,
+    "l4_l5": 4,
+    "l5_s1": 5
+  },
+  
+  "risk_thresholds": {
+    "high": 5.5,
+    "medium": 4.0,
+    "low": 0.0
+  },
+  
+  "slurm": {
+    "partition": "gpu",
+    "gpu_constraint": "v100",
+    "trial": {
+      "time": "02:00:00",
+      "mem": "32G",
+      "cpus": 4
+    },
+    "production": {
+      "time": "24:00:00",
+      "mem": "64G",
+      "cpus": 8
+    },
+    "download": {
+      "time": "24:00:00",
+      "mem": "16G",
+      "cpus": 4,
+      "partition": "primary"
+    }
+  },
+  
+  "docker": {
+    "username": "go2432",
+    "image_name": "lstv-uncertainty",
+    "tag": "latest",
+    "base_image": "pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime"
+  },
+  
+  "web_demo": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "max_upload_size": "100MB",
+    "debug": true
+  },
+  
+  "visualization": {
+    "report": {
+      "template": "html",
+      "include_plots": true,
+      "top_candidates": 20
+    },
+    "debug": {
+      "save_heatmaps": true,
+      "save_slices": true,
+      "dpi": 150
+    }
+  }
+}
