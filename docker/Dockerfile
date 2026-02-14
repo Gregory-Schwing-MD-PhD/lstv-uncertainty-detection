@@ -47,6 +47,9 @@ RUN pip install --no-cache-dir \
 # Create working directories
 RUN mkdir -p /work /data/input /data/output /app/models
 
+# --- ADDED UNZIP HERE TO PRESERVE CACHE ---
+RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /work
 
 # Default command
