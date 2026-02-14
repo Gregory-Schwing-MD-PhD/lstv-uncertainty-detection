@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
+#SBATCH --mem=24G
 #SBATCH --time=01:00:00
 #SBATCH --job-name=download_model
 #SBATCH -o logs/download_model_%j.out
