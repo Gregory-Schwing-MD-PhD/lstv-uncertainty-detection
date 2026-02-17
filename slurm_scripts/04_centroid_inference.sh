@@ -2,11 +2,11 @@
 #SBATCH -q gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=v100
-#SBATCH --time=24:00:00
+#SBATCH --time=36:00:00
 #SBATCH --job-name=lstv_centroid
 #SBATCH -o logs/centroid_%j.out
 #SBATCH -e logs/centroid_%j.err
@@ -46,8 +46,11 @@ DATA_DIR="${PROJECT_DIR}/data/raw/train_images"
 SERIES_CSV="${PROJECT_DIR}/data/raw/train_series_descriptions.csv"
 MODELS_DIR="${PROJECT_DIR}/models"
 
-# SPINEPS output — centroids + instance masks are both in segmentations/
-SPINEPS_SEG_DIR="${PROJECT_DIR}/results/spineps_segmentation/segmentations"
+# SPINEPS lives in a DIFFERENT repo directory.
+# Defaults to ~/spineps-segmentation but can be overridden:
+#   SPINEPS_REPO=/path/to/spineps-segmentation sbatch slurm_scripts/04_centroid_inference.sh
+SPINEPS_REPO="${SPINEPS_REPO:-${HOME}/spineps-segmentation}"
+SPINEPS_SEG_DIR="${SPINEPS_REPO}/results/spineps_segmentation/segmentations"
 
 OUTPUT_DIR="${PROJECT_DIR}/data/output/centroid_inference"
 mkdir -p "$OUTPUT_DIR/logs" "$OUTPUT_DIR/relabeled_masks" "$OUTPUT_DIR/audit_queue"
@@ -61,9 +64,13 @@ if [[ ! -f "$IMG_PATH" ]]; then
 fi
 
 # --- Prerequisites check ---
+echo "Looking for SPINEPS segmentations at: $SPINEPS_SEG_DIR"
 if [[ ! -d "$SPINEPS_SEG_DIR" ]]; then
     echo "ERROR: SPINEPS segmentations not found: $SPINEPS_SEG_DIR"
-    echo "Run 02_spineps_segmentation.sh first"
+    echo ""
+    echo "Fix options:"
+    echo "  1. Run spineps first:  cd ~/spineps-segmentation && sbatch slurm_scripts/02_spineps_segmentation.sh"
+    echo "  2. Set the path:       SPINEPS_REPO=/wsu/home/go/go24/go2432/spineps-segmentation sbatch slurm_scripts/04_centroid_inference.sh"
     exit 1
 fi
 
@@ -75,6 +82,7 @@ CHECKPOINT="${MODELS_DIR}/point_net_checkpoint.pth"
 [[ ! -f "$CHECKPOINT" ]] && echo "WARNING: Checkpoint not found — MOCK mode"
 
 echo "================================================================"
+echo "SPINEPS repo:  $SPINEPS_REPO"
 echo "Segmentations: $SPINEPS_SEG_DIR"
 echo "Output:        $OUTPUT_DIR"
 echo "================================================================"
